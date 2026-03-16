@@ -1,210 +1,174 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cally dev</title>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Cally dev</title>
 
-    <style>
-      * {
-        box-sizing: border-box;
-      }
+		<style>
+			* {
+				box-sizing: border-box;
+			}
 
-      body {
-        font-family: sans-serif;
-      }
+			body {
+				font-family: sans-serif;
+			}
 
-      ::part(months) {
-        display: flex;
-        gap: 1em;
-        flex-wrap: wrap;
-      }
+			::part(months) {
+				display: flex;
+				gap: 1em;
+				flex-wrap: wrap;
+			}
 
-      ::part(foo) {
-        background: red;
-      }
-      ::part(bar) {
-        background: blue;
-      }
+			::part(foo) {
+				background: red;
+			}
+			::part(bar) {
+				background: blue;
+			}
 
-      #date {
-        svg {
-          height: 16px;
-          width: 16px;
-          fill: none;
-          stroke: currentColor;
-          stroke-width: 1.5;
-        }
+			#date {
+				svg {
+					height: 16px;
+					width: 16px;
+					fill: none;
+					stroke: currentColor;
+					stroke-width: 1.5;
+				}
 
-        path {
-          stroke-linecap: round;
-          stroke-linejoin: round;
-        }
+				path {
+					stroke-linecap: round;
+					stroke-linejoin: round;
+				}
 
-        &::part(header) {
-          gap: 0.25em;
-        }
+				&::part(header) {
+					gap: 0.25em;
+				}
 
-        &::part(heading) {
-          display: flex;
-          gap: 0.25em;
-          order: -1;
-          margin-inline-end: auto;
-        }
+				&::part(heading) {
+					display: flex;
+					gap: 0.25em;
+					order: -1;
+					margin-inline-end: auto;
+				}
 
-        &::part(next),
-        &::part(previous),
-        ::part(select) {
-          border-radius: 0.25em;
-          border: 1px solid #bcbcbc;
-          padding: 0.2rem 0.5rem;
-          cursor: pointer;
-        }
+				&::part(next),
+				&::part(previous),
+				::part(select) {
+					border-radius: 0.25em;
+					border: 1px solid #bcbcbc;
+					padding: 0.2rem 0.5rem;
+					cursor: pointer;
+				}
 
-        &::part(next),
-        &::part(previous) {
-          padding: 0.2rem;
-        }
+				&::part(next),
+				&::part(previous) {
+					padding: 0.2rem;
+				}
 
-        &::part(months) {
-          display: flex;
-          gap: 1em;
-          flex-wrap: wrap;
-        }
+				&::part(months) {
+					display: flex;
+					gap: 1em;
+					flex-wrap: wrap;
+				}
 
-        calendar-select-year,
-        calendar-select-month {
-          &::part(label) {
-            position: absolute;
-            transform: scale(0);
-          }
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <h2>range</h2>
-    <div aria-live="polite" aria-atomic="true" id="output"></div>
-    <calendar-range
-      id="range"
-      months="3"
-      min="2024-02-10"
-      max="2025-10-10"
-      value="2024-02-12/2025-02-20"
-      show-week-numbers
-    >
-      <calendar-month></calendar-month>
-      <calendar-month offset="1"></calendar-month>
-      <calendar-month offset="2"></calendar-month>
-    </calendar-range>
+				calendar-select-year,
+				calendar-select-month {
+					&::part(label) {
+						position: absolute;
+						transform: scale(0);
+					}
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<h2>range</h2>
+		<div aria-live="polite" aria-atomic="true" id="output"></div>
+		<calendar-range id="range" months="3" min="2024-02-10" max="2025-10-10" value="2024-02-12/2025-02-20" show-week-numbers>
+			<calendar-month></calendar-month>
+			<calendar-month offset="1"></calendar-month>
+			<calendar-month offset="2"></calendar-month>
+		</calendar-range>
 
-    <h2>date</h2>
-    <calendar-date
-      id="date"
-      value="2020-04-01"
-      min="2019-11-01"
-      max="2025-03-20"
-      months="2"
-      show-outside-days
-      page-by="single"
-    >
-      <svg
-        aria-label="Previous"
-        slot="previous"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-      >
-        <path d="M15.75 19.5 8.25 12l7.5-7.5"></path>
-      </svg>
-      <svg
-        aria-label="Next"
-        slot="next"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-      >
-        <path d="m8.25 4.5 7.5 7.5-7.5 7.5"></path>
-      </svg>
+		<h2>date</h2>
+		<calendar-date id="date" value="2020-04-01" min="2019-11-01" max="2025-03-20" months="2" show-outside-days page-by="single">
+			<svg aria-label="Previous" slot="previous" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+				<path d="M15.75 19.5 8.25 12l7.5-7.5"></path>
+			</svg>
+			<svg aria-label="Next" slot="next" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+				<path d="m8.25 4.5 7.5 7.5-7.5 7.5"></path>
+			</svg>
 
-      <calendar-select-year slot="heading"></calendar-select-year>
-      <calendar-select-month
-        slot="heading"
-        format-month="short"
-      ></calendar-select-month>
+			<calendar-select-year slot="heading"></calendar-select-year>
+			<calendar-select-month slot="heading" format-month="short"></calendar-select-month>
 
-      <calendar-month></calendar-month>
-      <calendar-month offset="1"></calendar-month>
-    </calendar-date>
+			<calendar-month></calendar-month>
+			<calendar-month offset="1"></calendar-month>
+		</calendar-date>
 
-    <h2>multi</h2>
-    <calendar-multi
-      id="multi"
-      months="2"
-      show-outside-days
-      value="2024-05-07 2024-05-09"
-    >
-      <calendar-month></calendar-month>
-      <calendar-month offset="1"></calendar-month>
-    </calendar-multi>
+		<h2>multi</h2>
+		<calendar-multi id="multi" months="2" show-outside-days value="2024-05-07 2024-05-09">
+			<calendar-month></calendar-month>
+			<calendar-month offset="1"></calendar-month>
+		</calendar-multi>
 
-    <script type="module">
-      import "./src/index.ts";
+		<script type="module">
+			import "./src/index.ts";
 
-      const output = document.getElementById("output");
-      const formatter = new Intl.DateTimeFormat("en", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+			const output = document.getElementById("output");
+			const formatter = new Intl.DateTimeFormat("en", {
+				year: "numeric",
+				month: "long",
+				day: "numeric"
+			});
 
-      const toIso = (date) => date.toISOString().split("T")[0];
+			const toIso = (date) => date.toISOString().split("T")[0];
 
-      if (window.range) {
-        let start = null;
+			if (window.range) {
+				let start = null;
 
-        window.range.getDayParts = (date) => {
-          const d = date.getUTCDate();
+				window.range.getDayParts = (date) => {
+					const d = date.getUTCDate();
 
-          if (d % 5 === 0) return "foo";
-          if (d % 9 === 0) return "bar";
-          return "";
-        };
+					if (d % 5 === 0) return "foo";
+					if (d % 9 === 0) return "bar";
+					return "";
+				};
 
-        window.range.addEventListener("rangestart", (e) => {
-          const { detail } = e;
-          start = detail;
-          output.textContent = `Start of range selected. Please select another date.`;
-        });
+				window.range.addEventListener("rangestart", (e) => {
+					const { detail } = e;
+					start = detail;
+					output.textContent = `Start of range selected. Please select another date.`;
+				});
 
-        window.range.addEventListener("rangeend", (e) => {
-          const { detail } = e;
-          output.textContent = `Range selected: ${formatter.formatRange(start, detail)}`;
-        });
-      }
+				window.range.addEventListener("rangeend", (e) => {
+					const { detail } = e;
+					output.textContent = `Range selected: ${formatter.formatRange(start, detail)}`;
+				});
+			}
 
-      if (window.date) {
-        date.isDateDisallowed = (date) =>
-          date.getDay() === 0 || date.getDay() === 6;
+			if (window.date) {
+				date.isDateDisallowed = (date) => date.getDay() === 0 || date.getDay() === 6;
 
-        if (window.yearSelect) {
-          yearSelect.value = new Date(
-            date.getAttribute("value")
-          ).getUTCFullYear();
+				if (window.yearSelect) {
+					yearSelect.value = new Date(date.getAttribute("value")).getUTCFullYear();
 
-          yearSelect.addEventListener("change", (e) => {
-            const d = new Date(date.focusedDate);
-            d.setUTCFullYear(e.target.value);
-            date.focusedDate = toIso(d);
-          });
+					yearSelect.addEventListener("change", (e) => {
+						const d = new Date(date.focusedDate);
+						d.setUTCFullYear(e.target.value);
+						date.focusedDate = toIso(d);
+					});
 
-          date.addEventListener("focusday", (e) => {
-            yearSelect.value = e.detail.getUTCFullYear();
-          });
-        }
+					date.addEventListener("focusday", (e) => {
+						yearSelect.value = e.detail.getUTCFullYear();
+					});
+				}
 
-        date.addEventListener("focusday", (e) => {
-          console.log(formatter.format(e.detail));
-        });
-      }
-    </script>
-  </body>
+				date.addEventListener("focusday", (e) => {
+					console.log(formatter.format(e.detail));
+				});
+			}
+		</script>
+	</body>
 </html>

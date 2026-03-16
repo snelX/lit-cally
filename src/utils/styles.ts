@@ -1,4 +1,4 @@
-import { css } from "atomico";
+import { css } from "lit";
 
 export const reset = css`
   *,

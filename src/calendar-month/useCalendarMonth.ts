@@ -1,5 +1,4 @@
-import { useEvent, useMemo } from "atomico";
-import { useDayNames, useDateFormatter } from "../utils/hooks.js";
+import { createDateFormatter, getDayNames } from "../utils/hooks.js";
 import {
   clamp,
   endOfWeek,
@@ -19,15 +18,16 @@ const isLTR = (e: Event) => (e.target as HTMLElement).matches(":dir(ltr)");
 const dayOptions = { month: "long", day: "numeric" } as const;
 const monthOptions = { month: "long" } as const;
 const longDayOptions = { weekday: "long" } as const;
-const dispatchOptions = { bubbles: true };
 
-type UseCalendarMonthOptions = {
-  props: { offset: number };
+type CalendarMonthOptions = {
+  offset: number;
   context: CalendarContextValue;
+  dispatchFocusDay: (detail: PlainDate) => void;
+  dispatchSelectDay: (detail: PlainDate) => void;
+  dispatchHoverDay: (detail: PlainDate) => void;
 };
 
-export function useCalendarMonth({ props, context }: UseCalendarMonthOptions) {
-  const { offset } = props;
+export function computeCalendarMonth({ offset, context, dispatchFocusDay, dispatchSelectDay, dispatchHoverDay }: CalendarMonthOptions) {
   const {
     firstDayOfWeek,
     isDateDisallowed,
@@ -41,28 +41,14 @@ export function useCalendarMonth({ props, context }: UseCalendarMonthOptions) {
   } = context;
 
   const todaysDate = today ?? getToday();
-  const daysLong = useDayNames(longDayOptions, firstDayOfWeek, locale);
-  const visibleDayOptions = useMemo(
-    () => ({ weekday: formatWeekday }),
-    [formatWeekday]
-  );
-  const daysVisible = useDayNames(visibleDayOptions, firstDayOfWeek, locale);
-  const dayFormatter = useDateFormatter(dayOptions, locale);
-  const formatter = useDateFormatter(monthOptions, locale);
+  const daysLong = getDayNames(longDayOptions, firstDayOfWeek, locale);
+  const visibleDayOptions = { weekday: formatWeekday } as const;
+  const daysVisible = getDayNames(visibleDayOptions, firstDayOfWeek, locale);
+  const dayFormatter = createDateFormatter(dayOptions, locale);
+  const formatter = createDateFormatter(monthOptions, locale);
 
-  const yearMonth = useMemo(
-    () => page.start.add({ months: offset }),
-    [page, offset]
-  );
-
-  const weeks = useMemo(
-    () => getViewOfMonth(yearMonth, firstDayOfWeek),
-    [yearMonth, firstDayOfWeek]
-  );
-
-  const dispatchFocusDay = useEvent<PlainDate>("focusday", dispatchOptions);
-  const dispatchSelectDay = useEvent<PlainDate>("selectday", dispatchOptions);
-  const dispatchHoverDay = useEvent<PlainDate>("hoverday", dispatchOptions);
+  const yearMonth = page.start.add({ months: offset });
+  const weeks = getViewOfMonth(yearMonth, firstDayOfWeek);
 
   function focusDay(date: PlainDate) {
     dispatchFocusDay(clamp(date, min, max));
@@ -157,10 +143,10 @@ export function useCalendarMonth({ props, context }: UseCalendarMonthOptions) {
       part: `${commonParts} ${parts}`,
       tabindex: isInMonth && isFocusedDay ? 0 : -1,
       disabled: isDisabled,
-      "aria-disabled": isDisallowed ? "true" : undefined,
-      "aria-pressed": isInMonth && isSelected,
-      "aria-current": isToday ? "date" : undefined,
-      "aria-label": dayFormatter.format(asDate),
+      ariaDisabled: isDisallowed ? "true" : undefined,
+      ariaPressed: isInMonth && isSelected,
+      ariaCurrent: isToday ? "date" : undefined,
+      ariaLabel: dayFormatter.format(asDate),
       onkeydown: onKeyDown,
       onclick() {
         if (!isDisallowed) {

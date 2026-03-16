@@ -1,6 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { userEvent, page } from "vitest/browser";
-import type { VNodeAny } from "atomico/types/vnode";
 import {
   clickDay,
   createSpy,
@@ -10,47 +9,35 @@ import {
   getNextPageButton,
   getPrevPageButton,
   mount,
+  createElement,
 } from "../utils/test.js";
 
-import { CalendarMonth } from "../calendar-month/calendar-month.js";
+import "../calendar-month/calendar-month.js";
 import { CalendarMulti } from "./calendar-multi.js";
 
-type TestProps = {
-  onchange: (e: Event) => void;
-  onfocusday: (e: CustomEvent<Date>) => any;
-  value: string;
-  min: string;
-  max: string;
-  today: string;
-  months?: number;
-  children?: VNodeAny;
-};
-
-function Fixture({ children, ...props }: Partial<TestProps>): VNodeAny {
-  return (
-    <CalendarMulti {...props} locale="en-GB">
-      {children ?? <CalendarMonth />}
-    </CalendarMulti>
-  );
+async function mountFixture(props: Record<string, any> = {}, children?: HTMLElement[]) {
+  const defaultChildren = children ?? [createElement("calendar-month")];
+  return mount<CalendarMulti>("calendar-multi", { locale: "en-GB", ...props }, defaultChildren);
 }
+
+afterEach(() => {
+  document.querySelectorAll("calendar-multi").forEach((el) => el.remove());
+});
 
 describe("CalendarMulti", () => {
   it("is defined", async () => {
-    const calendar = await mount(<Fixture />);
+    const calendar = await mountFixture();
     expect(calendar).toBeInstanceOf(CalendarMulti);
   });
 
   describe("mouse interaction", () => {
     it("can select a multiple days", async () => {
       const spy = createSpy<(e: Event) => void>();
-      const calendar = await mount(
-        <Fixture value="2020-01-01 2020-01-03" onchange={spy} />
-      );
+      const calendar = await mountFixture({ value: "2020-01-01 2020-01-03", onchange: spy });
 
       const month = getMonth(calendar);
       const nextMonth = getNextPageButton(calendar);
 
-      // to april
       await nextMonth.click();
       await nextMonth.click();
       await nextMonth.click();
@@ -61,11 +48,8 @@ describe("CalendarMulti", () => {
 
       await clickDay(month, "22 April");
       expect(spy.count).toBe(2);
-      expect(calendar.value).toBe(
-        "2020-01-01 2020-01-03 2020-04-19 2020-04-22"
-      );
+      expect(calendar.value).toBe("2020-01-01 2020-01-03 2020-04-19 2020-04-22");
 
-      // deselect
       await clickDay(month, "22 April");
       expect(spy.count).toBe(3);
       expect(calendar.value).toBe("2020-01-01 2020-01-03 2020-04-19");
@@ -75,21 +59,14 @@ describe("CalendarMulti", () => {
   describe("keyboard interaction", () => {
     it("can select multiple days", async () => {
       const spy = createSpy();
-      await mount(<Fixture value="2020-01-01 2020-01-03" onchange={spy} />);
+      await mountFixture({ value: "2020-01-01 2020-01-03", onchange: spy });
 
-      // tab to next page
       await userEvent.keyboard("{Tab}");
       await userEvent.keyboard("{Tab}");
-
-      // set month to april
       await userEvent.keyboard("{Enter}");
       await userEvent.keyboard("{Enter}");
       await userEvent.keyboard("{Enter}");
-
-      // tab to grid
       await userEvent.keyboard("{Tab}");
-
-      // select 19th of month
       await userEvent.keyboard("{ArrowDown}");
       await userEvent.keyboard("{ArrowDown}");
       await userEvent.keyboard("{ArrowRight}");
@@ -99,36 +76,26 @@ describe("CalendarMulti", () => {
       await userEvent.keyboard("{Enter}");
 
       expect(spy.count).toBe(1);
-      expect(spy.last[0].target.value).toBe(
-        "2020-01-01 2020-01-03 2020-04-19"
-      );
+      expect(spy.last[0].target.value).toBe("2020-01-01 2020-01-03 2020-04-19");
 
-      // select 22nd of month
       await userEvent.keyboard("{ArrowRight}");
       await userEvent.keyboard("{ArrowRight}");
       await userEvent.keyboard("{ArrowRight}");
       await userEvent.keyboard("{Enter}");
 
       expect(spy.count).toBe(2);
-      expect(spy.last[0].target.value).toBe(
-        "2020-01-01 2020-01-03 2020-04-19 2020-04-22"
-      );
+      expect(spy.last[0].target.value).toBe("2020-01-01 2020-01-03 2020-04-19 2020-04-22");
 
-      // deselect 22nd of month
       await userEvent.keyboard("{Enter}");
       expect(spy.count).toBe(3);
-      expect(spy.last[0].target.value).toBe(
-        "2020-01-01 2020-01-03 2020-04-19"
-      );
+      expect(spy.last[0].target.value).toBe("2020-01-01 2020-01-03 2020-04-19");
     });
   });
 
   describe("events", () => {
     it("raises a change event", async () => {
       const spy = createSpy<(e: Event) => void>();
-      const calendar = await mount(
-        <Fixture value="2022-01-01 2022-01-03" onchange={spy} />
-      );
+      const calendar = await mountFixture({ value: "2022-01-01 2022-01-03", onchange: spy });
 
       const month = getMonth(calendar);
       await getPrevPageButton(calendar).click();
@@ -139,15 +106,13 @@ describe("CalendarMulti", () => {
 
       await clickDay(month, "30 December");
       expect(spy.count).toBe(2);
-      expect(calendar.value).toBe(
-        "2022-01-01 2022-01-03 2021-12-31 2021-12-30"
-      );
+      expect(calendar.value).toBe("2022-01-01 2022-01-03 2021-12-31 2021-12-30");
     });
   });
 
   describe("focused date", () => {
     it("defaults to the first date in the list if not set", async () => {
-      const calendar = await mount(<Fixture value="2020-01-05 2020-01-10" />);
+      const calendar = await mountFixture({ value: "2020-01-05 2020-01-10" });
       const month = getMonth(calendar);
 
       const day = getDayButton(month, "5 January");
@@ -157,17 +122,15 @@ describe("CalendarMulti", () => {
 
   describe("grid", () => {
     it("allows arbitrary DOM structure", async () => {
-      const calendar = await mount(
-        <Fixture value="2020-01-05 2020-01-10">
-          <div>
-            <div>
-              <div>
-                <CalendarMonth />
-              </div>
-            </div>
-          </div>
-        </Fixture>
-      );
+      const inner = createElement("calendar-month");
+      const wrapper = document.createElement("div");
+      const wrapper2 = document.createElement("div");
+      const wrapper3 = document.createElement("div");
+      wrapper3.appendChild(inner);
+      wrapper2.appendChild(wrapper3);
+      wrapper.appendChild(wrapper2);
+
+      const calendar = await mountFixture({ value: "2020-01-05 2020-01-10" }, [wrapper]);
 
       const month = getMonth(calendar);
       const fifth = getDayButton(month, "5 January");

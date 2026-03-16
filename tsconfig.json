@@ -1,18 +1,36 @@
 {
-  "extends": "@atomico/tsconfig/base.json",
-  "include": ["src/**/*.ts", "src/**/*.tsx", "./vitest.d.ts"],
   "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    // despite these being in the atomico base config, i need
-    // them here for some reason to avoid tests failing
-    // with "Cannot find module 'react'"
+    "target": "es2020",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": [
+      "esnext.array",
+      "esnext",
+      "es2020",
+      "dom"
+    ],
     "declaration": true,
-    "emitDeclarationOnly": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "atomico",
-    "moduleResolution": "bundler"
-  }
+    "declarationMap": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "importHelpers": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "src/**/*",
+    "demo/**/*",
+    "vitest.d.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

@@ -1,171 +1,202 @@
-import { useState, useEvent, useHost, useEffect, useMemo } from "atomico";
+import type { ReactiveController, ReactiveControllerHost } from "lit";
+import { clamp, getToday, toDate } from "../utils/date.js";
+import { createDateFormatter, parseDateProp } from "../utils/hooks.js";
 import { PlainDate, PlainYearMonth } from "../utils/temporal.js";
-import { useDateProp, useDateFormatter } from "../utils/hooks.js";
-import { clamp, toDate, getToday } from "../utils/date.js";
 
 export type Pagination = "single" | "months";
 
 type CalendarBaseOptions = {
-  months: number;
-  pageBy: Pagination;
-  locale?: string;
-  focusedDate: PlainDate | undefined;
-  setFocusedDate: (date: PlainDate) => void;
+	host: ReactiveControllerHost & HTMLElement;
+	getMonths: () => number;
+	getPageBy: () => Pagination;
+	getLocale: () => string | undefined;
+	getFocusedDateProp: () => string;
+	setFocusedDateProp: (value: string) => void;
+	getMin: () => string;
+	getMax: () => string;
+	getToday: () => string;
 };
+
+export interface CalendarFocusOptions extends FocusOptions {
+	target?: "day" | "next" | "previous";
+}
 
 const formatOptions = { year: "numeric" } as const;
 const formatVerboseOptions = { year: "numeric", month: "long" } as const;
 
 function diffInMonths(a: PlainYearMonth, b: PlainYearMonth): number {
-  return (b.year - a.year) * 12 + b.month - a.month;
+	return (b.year - a.year) * 12 + b.month - a.month;
 }
 
-const createPage = (
-  start: PlainYearMonth,
-  months: number,
-  pageBy: Pagination = "months"
-) => {
-  if (months === 12 && pageBy !== "single") {
-    start = new PlainYearMonth(start.year, 1);
-  }
-  return {
-    start,
-    end: start.add({ months: months - 1 }),
-  };
+const createPage = (start: PlainYearMonth, months: number, pageBy: Pagination = "months") => {
+	if (months === 12 && pageBy !== "single") {
+		start = new PlainYearMonth(start.year, 1);
+	}
+	return {
+		start,
+		end: start.add({ months: months - 1 })
+	};
 };
 
-type UsePaginationOptions = {
-  pageBy: Pagination;
-  focusedDate: PlainDate;
-  months: number;
-  min?: PlainDate;
-  max?: PlainDate;
-  goto: (date: PlainDate) => void;
-};
+export class CalendarBaseController implements ReactiveController {
+	private _page!: { start: PlainYearMonth; end: PlainYearMonth };
+	private _focusedDate!: PlainDate;
+	private _min?: PlainDate;
+	private _max?: PlainDate;
+	private _today?: PlainDate;
+	private _format!: Intl.DateTimeFormat;
+	private _formatVerbose!: Intl.DateTimeFormat;
+	private _host: ReactiveControllerHost & HTMLElement;
+	private _options: CalendarBaseOptions;
+	private _prevFocusedStr = "";
+	private _prevPageStartStr = "";
 
-export interface CalendarFocusOptions extends FocusOptions {
-  target?: "day" | "next" | "previous";
-}
+	constructor(options: CalendarBaseOptions) {
+		this._host = options.host;
+		this._options = options;
+		this._host.addController(this);
+	}
 
-function usePagination({
-  pageBy,
-  focusedDate,
-  months,
-  max,
-  min,
-  goto,
-}: UsePaginationOptions) {
-  const step = pageBy === "single" ? 1 : months;
-  const [page, setPage] = useState(() =>
-    createPage(focusedDate.toPlainYearMonth(), months, pageBy)
-  );
+	get page() {
+		return this._page;
+	}
 
-  const updatePageBy = (by: number) =>
-    setPage(createPage(page.start.add({ months: by }), months, pageBy));
+	get focusedDate() {
+		return this._focusedDate;
+	}
 
-  const contains = (date: PlainDate) => {
-    const diff = diffInMonths(page.start, date.toPlainYearMonth());
-    return diff >= 0 && diff < months;
-  };
+	get min() {
+		return this._min;
+	}
 
-  // page change -> update focused date
-  useEffect(() => {
-    if (contains(focusedDate)) {
-      return;
-    }
+	get max() {
+		return this._max;
+	}
 
-    const diff = diffInMonths(focusedDate.toPlainYearMonth(), page.start);
-    goto(focusedDate.add({ months: diff }));
-  }, [page.start]);
+	get today() {
+		return this._today;
+	}
 
-  // focused date change -> update page
-  useEffect(() => {
-    if (contains(focusedDate)) {
-      return;
-    }
+	get format() {
+		return this._format;
+	}
 
-    const diff = diffInMonths(page.start, focusedDate.toPlainYearMonth());
+	get formatVerbose() {
+		return this._formatVerbose;
+	}
 
-    // if we only move one month either way, move by step
-    if (diff === -1) {
-      updatePageBy(-step);
-    } else if (diff === months) {
-      updatePageBy(step);
-    } else {
-      // anything else, move in steps of months
-      updatePageBy(Math.floor(diff / months) * months);
-    }
-  }, [focusedDate, step, months]);
+	get next(): (() => void) | undefined {
+		const months = this._options.getMonths();
+		const step = this._options.getPageBy() === "single" ? 1 : months;
+		if (!this._max || !this._contains(this._max)) {
+			return () => this._updatePageBy(step);
+		}
+		return undefined;
+	}
 
-  return {
-    page,
-    previous: !min || !contains(min) ? () => updatePageBy(-step) : undefined,
-    next: !max || !contains(max) ? () => updatePageBy(step) : undefined,
-  };
-}
+	get previous(): (() => void) | undefined {
+		const months = this._options.getMonths();
+		const step = this._options.getPageBy() === "single" ? 1 : months;
+		if (!this._min || !this._contains(this._min)) {
+			return () => this._updatePageBy(-step);
+		}
+		return undefined;
+	}
 
-export function useCalendarBase({
-  months,
-  pageBy,
-  locale,
-  focusedDate: focusedDateProp,
-  setFocusedDate,
-}: CalendarBaseOptions) {
-  const [min] = useDateProp("min");
-  const [max] = useDateProp("max");
-  const [today] = useDateProp("today");
-  const dispatchFocusDay = useEvent<Date>("focusday");
-  const dispatch = useEvent("change");
+	private _contains(date: PlainDate): boolean {
+		const months = this._options.getMonths();
+		const diff = diffInMonths(this._page.start, date.toPlainYearMonth());
+		return diff >= 0 && diff < months;
+	}
 
-  const focusedDate = useMemo(
-    () => clamp(focusedDateProp ?? today ?? getToday(), min, max),
-    [focusedDateProp, today, min, max]
-  );
+	private _updatePageBy(by: number) {
+		const months = this._options.getMonths();
+		const pageBy = this._options.getPageBy();
+		this._page = createPage(this._page.start.add({ months: by }), months, pageBy);
+		this._host.requestUpdate();
 
-  function goto(date: PlainDate) {
-    setFocusedDate(date);
-    dispatchFocusDay(toDate(date));
-  }
+		// page change -> update focused date
+		if (!this._contains(this._focusedDate)) {
+			const diff = diffInMonths(this._focusedDate.toPlainYearMonth(), this._page.start);
+			this._goto(this._focusedDate.add({ months: diff }));
+		}
+	}
 
-  const { next, previous, page } = usePagination({
-    pageBy,
-    focusedDate,
-    months,
-    min,
-    max,
-    goto,
-  });
+	hostConnected() {
+		const locale = this._options.getLocale();
+		this._format = createDateFormatter(formatOptions, locale);
+		this._formatVerbose = createDateFormatter(formatVerboseOptions, locale);
 
-  const host = useHost();
-  function focus(options?: CalendarFocusOptions) {
-    const target = options?.target ?? "day";
-    if (target === "day") {
-      host.current
-        .querySelectorAll<HTMLElement>("calendar-month")
-        .forEach((m) => m.focus(options));
-    } else {
-      host.current
-        .shadowRoot!.querySelector<HTMLButtonElement>(`[part~='${target}']`)!
-        .focus(options);
-    }
-  }
+		this._min = parseDateProp(this._options.getMin());
+		this._max = parseDateProp(this._options.getMax());
+		this._today = parseDateProp(this._options.getToday());
 
-  return {
-    format: useDateFormatter(formatOptions, locale),
-    formatVerbose: useDateFormatter(formatVerboseOptions, locale),
-    page,
-    focusedDate,
-    dispatch,
-    onFocus(e: CustomEvent<PlainDate>) {
-      e.stopPropagation();
-      goto(e.detail);
-      setTimeout(focus);
-    },
-    min,
-    max,
-    today,
-    next,
-    previous,
-    focus,
-  };
+		const focusedDateProp = parseDateProp(this._options.getFocusedDateProp());
+		const newFocused = clamp(focusedDateProp ?? this._today ?? getToday(), this._min, this._max);
+
+		const months = this._options.getMonths();
+		const pageBy = this._options.getPageBy();
+
+		// Initialize page on first run
+		if (!this._page) {
+			this._page = createPage(newFocused.toPlainYearMonth(), months, pageBy);
+			this._focusedDate = newFocused;
+			this._prevFocusedStr = newFocused.toString();
+			this._prevPageStartStr = this._page.start.toString();
+			return;
+		}
+
+		// If focused date changed externally, update page
+		const newFocusedStr = newFocused.toString();
+		if (newFocusedStr !== this._prevFocusedStr) {
+			this._focusedDate = newFocused;
+			this._prevFocusedStr = newFocusedStr;
+
+			if (!this._contains(newFocused)) {
+				const step = pageBy === "single" ? 1 : months;
+				const diff = diffInMonths(this._page.start, newFocused.toPlainYearMonth());
+
+				if (diff === -1) {
+					this._page = createPage(this._page.start.add({ months: -step }), months, pageBy);
+				} else if (diff === months) {
+					this._page = createPage(this._page.start.add({ months: step }), months, pageBy);
+				} else {
+					this._page = createPage(this._page.start.add({ months: Math.floor(diff / months) * months }), months, pageBy);
+				}
+				this._prevPageStartStr = this._page.start.toString();
+			}
+		}
+	}
+
+	private _goto(date: PlainDate) {
+		this._focusedDate = date;
+		this._prevFocusedStr = date.toString();
+		this._options.setFocusedDateProp(date.toString());
+		this._host.dispatchEvent(
+			new CustomEvent("focusday", {
+				detail: toDate(date),
+				bubbles: true,
+				composed: true
+			})
+		);
+	}
+
+	onFocus(e: CustomEvent<PlainDate>) {
+		e.stopPropagation();
+		this._goto(e.detail);
+		setTimeout(() => this.focus());
+	}
+
+	dispatch() {
+		this._host.dispatchEvent(new Event("change", { bubbles: true }));
+	}
+
+	focus(options?: CalendarFocusOptions) {
+		const target = options?.target ?? "day";
+		if (target === "day") {
+			this._host.querySelectorAll<HTMLElement>("calendar-month").forEach((m) => m.focus(options));
+		} else {
+			this._host.shadowRoot!.querySelector<HTMLButtonElement>(`[part~='${target}']`)!.focus(options);
+		}
+	}
 }
